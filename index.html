@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>쇼핑 리스트</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    h1 {
+      font-size: 28px;
+      color: #1a1a2e;
+      margin-bottom: 24px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .input-row select {
+      padding: 12px 12px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+      background: #fff;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+
+    .input-row select:focus {
+      border-color: #4a6cf7;
+    }
+
+    .input-row input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 2px solid #ddd;
+      border-radius: 10px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.2s;
+      min-width: 0;
+    }
+
+    .input-row input:focus {
+      border-color: #4a6cf7;
+    }
+
+    .input-row button {
+      padding: 12px 20px;
+      background: #4a6cf7;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .input-row button:hover {
+      background: #3b5de7;
+    }
+
+    .filter-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn {
+      padding: 6px 14px;
+      border: 1.5px solid #ddd;
+      border-radius: 20px;
+      background: #fff;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #555;
+    }
+
+    .filter-btn:hover {
+      border-color: #4a6cf7;
+      color: #4a6cf7;
+    }
+
+    .filter-btn.active {
+      background: #4a6cf7;
+      border-color: #4a6cf7;
+      color: #fff;
+    }
+
+    .count {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 12px;
+    }
+
+    .category-group {
+      margin-bottom: 20px;
+    }
+
+    .category-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 0 4px;
+    }
+
+    .category-icon {
+      font-size: 18px;
+    }
+
+    .category-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: #555;
+    }
+
+    .category-count {
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #fff;
+      padding: 14px 16px;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      transition: opacity 0.2s;
+    }
+
+    .item.checked {
+      opacity: 0.55;
+    }
+
+    .item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #4a6cf7;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .item span {
+      flex: 1;
+      font-size: 16px;
+      color: #333;
+      transition: text-decoration 0.2s;
+      word-break: break-word;
+    }
+
+    .item.checked span {
+      text-decoration: line-through;
+      color: #aaa;
+    }
+
+    .item .delete-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #ccc;
+      cursor: pointer;
+      padding: 0 4px;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .item .delete-btn:hover {
+      color: #e74c3c;
+    }
+
+    .empty {
+      text-align: center;
+      color: #bbb;
+      padding: 48px 0;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>쇼핑 리스트</h1>
+
+    <div class="input-row">
+      <select id="categorySelect"></select>
+      <input type="text" id="itemInput" placeholder="추가할 항목을 입력하세요" />
+      <button onclick="addItem()">추가</button>
+    </div>
+
+    <div class="filter-row" id="filterRow"></div>
+    <div class="count" id="count"></div>
+    <div id="list"></div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'shopping-list';
+
+    const CATEGORIES = [
+      { id: 'fruit',     name: '과일/채소', icon: '🥬' },
+      { id: 'meat',      name: '정육/수산', icon: '🥩' },
+      { id: 'dairy',     name: '유제품',   icon: '🧀' },
+      { id: 'snack',     name: '간식/음료', icon: '🍪' },
+      { id: 'frozen',    name: '냉동식품',  icon: '🧊' },
+      { id: 'daily',     name: '생활용품',  icon: '🧴' },
+      { id: 'other',     name: '기타',     icon: '📦' },
+    ];
+
+    let activeFilter = 'all';
+
+    function load() {
+      try {
+        const items = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+        return items.map(item => ({
+          ...item,
+          category: item.category || 'other'
+        }));
+      } catch {
+        return [];
+      }
+    }
+
+    function save(items) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    }
+
+    function escapeHtml(text) {
+      const d = document.createElement('div');
+      d.textContent = text;
+      return d.innerHTML;
+    }
+
+    function getCategoryById(id) {
+      return CATEGORIES.find(c => c.id === id) || CATEGORIES[CATEGORIES.length - 1];
+    }
+
+    function initCategorySelect() {
+      const sel = document.getElementById('categorySelect');
+      sel.innerHTML = CATEGORIES.map(c =>
+        `<option value="${c.id}">${c.icon} ${c.name}</option>`
+      ).join('');
+    }
+
+    function renderFilters() {
+      const items = load();
+      const usedCategories = [...new Set(items.map(i => i.category))];
+      const row = document.getElementById('filterRow');
+
+      if (items.length === 0) {
+        row.innerHTML = '';
+        return;
+      }
+
+      let html = `<button class="filter-btn ${activeFilter === 'all' ? 'active' : ''}"
+                          onclick="setFilter('all')">전체</button>`;
+
+      CATEGORIES.forEach(cat => {
+        if (usedCategories.includes(cat.id)) {
+          html += `<button class="filter-btn ${activeFilter === cat.id ? 'active' : ''}"
+                           onclick="setFilter('${cat.id}')">${cat.icon} ${cat.name}</button>`;
+        }
+      });
+
+      row.innerHTML = html;
+    }
+
+    function setFilter(id) {
+      activeFilter = id;
+      render();
+    }
+
+    function render() {
+      const items = load();
+      const listEl = document.getElementById('list');
+      const countEl = document.getElementById('count');
+
+      renderFilters();
+
+      if (items.length === 0) {
+        listEl.innerHTML = '<div class="empty">리스트가 비어 있습니다</div>';
+        countEl.textContent = '';
+        return;
+      }
+
+      const done = items.filter(i => i.checked).length;
+      countEl.textContent = `${done} / ${items.length} 완료`;
+
+      const filtered = activeFilter === 'all'
+        ? items
+        : items.filter(i => i.category === activeFilter);
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = '<div class="empty">해당 카테고리에 항목이 없습니다</div>';
+        return;
+      }
+
+      const grouped = {};
+      filtered.forEach((item, _) => {
+        const catId = item.category || 'other';
+        if (!grouped[catId]) grouped[catId] = [];
+        grouped[catId].push({ ...item, globalIdx: items.indexOf(item) });
+      });
+
+      let html = '';
+      CATEGORIES.forEach(cat => {
+        const group = grouped[cat.id];
+        if (!group) return;
+
+        html += `<div class="category-group">
+          <div class="category-header">
+            <span class="category-icon">${cat.icon}</span>
+            <span class="category-name">${cat.name}</span>
+            <span class="category-count">${group.length}개</span>
+          </div>
+          <div class="list">`;
+
+        group.forEach(item => {
+          html += `
+            <div class="item ${item.checked ? 'checked' : ''}">
+              <input type="checkbox" ${item.checked ? 'checked' : ''}
+                     onchange="toggleItem(${item.globalIdx})" />
+              <span>${escapeHtml(item.name)}</span>
+              <button class="delete-btn" onclick="deleteItem(${item.globalIdx})" title="삭제">&times;</button>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+      });
+
+      listEl.innerHTML = html;
+    }
+
+    function addItem() {
+      const input = document.getElementById('itemInput');
+      const select = document.getElementById('categorySelect');
+      const name = input.value.trim();
+      if (!name) return;
+
+      const items = load();
+      items.push({ name, checked: false, category: select.value });
+      save(items);
+      input.value = '';
+      input.focus();
+      render();
+    }
+
+    function toggleItem(idx) {
+      const items = load();
+      if (items[idx]) {
+        items[idx].checked = !items[idx].checked;
+        save(items);
+        render();
+      }
+    }
+
+    function deleteItem(idx) {
+      const items = load();
+      items.splice(idx, 1);
+      save(items);
+      render();
+    }
+
+    document.getElementById('itemInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') addItem();
+    });
+
+    initCategorySelect();
+    render();
+  </script>
+</body>
+</html>
